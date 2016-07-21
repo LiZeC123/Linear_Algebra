@@ -1,0 +1,2 @@
+[Input]  = 01
+[Output] = 11
