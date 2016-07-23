@@ -5,6 +5,9 @@
 #include <cstdio>
 #include <fstream>
 
+#include "Fraction.h"
+#include "Math_Function.h"
+
 class Matrix
 {
 public:
@@ -25,7 +28,9 @@ public:
 	//判断缓冲区是否为空
 	bool IsBufEmpty();
 	//对矩阵化简，可以用于求解线性方程组	
-	Matrix & RowReduce();		
+	Matrix & RowReduce();	
+	//计算对应行列式的值
+	Fraction det();
 	
 private:
 	std::vector<int> buf;
@@ -39,7 +44,8 @@ private:
 	//指定两行线性组合加到另一行
 	Matrix & RowExCP(int C1, int row, int C2, int crow);
 
-	//返回指定行的pivot，即改行第一个非0元素的值
+	//返回指定行的pivot，即该行第一个非0元素的值
+	//若全为0，则返回0
 	int GetPivot(int row);
 
 	//检查pivot是否为0
@@ -52,8 +58,14 @@ private:
 
 	//去除给定行的公因子
 	void Reduceone(int row);
+	
+	//将给定的矩阵化成阶梯型
+	int _RowReduce_Tri(bool IsDeterminant = false);
+	//将给定的有唯一解的阶梯型矩阵化简
+	void _RowReduce_Only();
 
-
+	//返回阶梯型矩阵的秩
+	int _Rank();
 
 };
 

@@ -1,9 +1,5 @@
 #include "matrix.h"
 
-
-static int gcd(int a, int b);
-static int lcm(int a, int b);
-
 Matrix & Matrix::GetOne(int one)
 {
 	buf.push_back(one);
@@ -38,70 +34,37 @@ bool Matrix::IsBufEmpty()
 	return buf.size() == 0;
 }
 
-//这个函数的智能水平还有待提高
-//感觉流程比较复杂，不知道能不能再拆分一些出来
 Matrix & Matrix::RowReduce()
 {
+	_RowReduce_Tri();
+	
 	//增广矩阵中未知数数量为列数减一
 	const int Xnum = content[0].size() - 1;
-	const int Rnum = content.size();
-	//到达边界，或者剩余行全为0，则结束
-	for (int i = 0; i <Xnum; ++i) {
-		
-		//判断pivot是否需要交换行位置
-		int ReturnRow = CheckPivot(i);
-		if ( ReturnRow > 0) {
-			RowEx(i, ReturnRow);
-		}
-		else if (ReturnRow == 0) {
-			//全为0直接下一轮
-			continue;
-		}
+	const int Rnum = _Rank();
 
-		//否则按照正常路径
-		for (int j = i + 1; j < Rnum; ++j) {
-			//遍历第i列对应的数据
-			int pi = GetPivot(i);
-			int pj = content[j][i];
-
-			//判断消去行是否为0，是则直接下一轮
-			if (pj == 0) {
-				continue;
-			}
-
-			//计算达到最小公倍数的因子，
-			int ps = lcm(pi, pj);
-			pi = ps / pi;
-			pj = ps / pj;
-
-			//由数学知识，两个因子和原来的数据相乘以后，两行的符号总是相同的
-			//使不变的一行前面加上负号即可保证消除
-			RowExCP(pj,j,-pi,i);
-
-			//调试代码，注意移除
-			//std::cout << std::endl;
-			//ShowMatrix();
+	//未知数与秩相等时，才有唯一解，从而进行化简
+	if (Xnum == Rnum) {
+		_RowReduce_Only();
+	}
+	else {
+		//否则只对非0行进行系数的化简
+		for (int i = 0; i < Rnum; ++i) {
+			Reduceone(i);
 		}
 	}
-
-	//已经化成阶梯型了，下面开始向上化简
-	//反向迭代，边界条件有变化
-	for (int i = Xnum - 1; i >= 0; --i) {
-		Reduceone(i);
-		for (int j = i -1; j >= 0; --j) {
-			int pi = GetPivot(i);
-			int pj = content[j][i];
-
-			int ps = lcm(pi, pj);
-			pi = ps / pi;
-			pj = ps / pj;
-
-			RowExCP(pj, j, -pi, i);
-		}
-	}
-
 
 	return *this;
+}
+
+Fraction Matrix::det()
+{
+	int expend = _RowReduce_Tri(true);
+	int det = 1;
+	for (unsigned int i = 0; i < content.size(); ++i) {
+		det *= content[i][i];
+	}
+
+	return Fraction(det,expend);
 }
 
 Matrix & Matrix::RowEx(int row1, int row2)
@@ -188,9 +151,97 @@ void Matrix::Reduceone(int row)
 		gcdnum = gcd(i, gcdnum);
 	}
 	
-	for (auto &i : r) {
-		i /= gcdnum;
+	if (gcdnum != 0) {
+		for (auto &i : r) {
+			i /= gcdnum;
+		}
 	}
+}
+
+int Matrix::_RowReduce_Tri(bool IsDeterminant)
+{
+	int expand = 1;
+	const int Rnum = content.size();
+	//必须两个同时满足，才能保证数组不越界
+	for (int i = 0; i < Rnum; ++i) {
+
+		//判断pivot是否需要交换行位置
+		int ReturnRow = CheckPivot(i);
+		if (ReturnRow > 0) {
+			RowEx(i, ReturnRow);
+		}
+		else if (ReturnRow == 0) {
+			//全为0直接下一轮
+			continue;
+		}
+
+		//否则按照正常路径
+		for (int j = i + 1; j < Rnum; ++j) {
+			//遍历第i列对应的数据
+			int pi = GetPivot(i);
+			int pj = content[j][i];
+
+			//判断消去行是否为0，是则直接下一轮
+			if (pj == 0) {
+				continue;
+			}
+
+			//计算达到最小公倍数的因子，
+			int ps = lcm(pi, pj);
+			pi = ps / pi;
+			pj = ps / pj;
+
+			//由数学知识，两个因子和原来的数据相乘以后，两行的符号总是相同的
+			//使不变的一行前面加上负号即可保证消除
+			RowExCP(pj, j, -pi, i);
+
+			//记录变化的行的扩大倍数
+			expand *= pj;
+
+			//调试代码，注意移除
+			//std::cout << std::endl;
+			//ShowMatrix();
+		}
+	}
+
+	if (IsDeterminant) {
+		return expand;
+	}
+	else {
+		return 1;
+	}
+}
+
+void Matrix::_RowReduce_Only()
+{
+	const int Rnum = _Rank();
+
+	//反向迭代，边界条件有变化
+	for (int i = Rnum - 1; i >= 0; --i) {
+		Reduceone(i);
+		for (int j = i - 1; j >= 0; --j) {
+			int pi = GetPivot(i);
+			int pj = content[j][i];
+
+			int ps = lcm(pi, pj);
+			pi = ps / pi;
+			pj = ps / pj;
+
+			RowExCP(pj, j, -pi, i);
+		}
+	}
+
+}
+
+int Matrix::_Rank()
+{
+	int rank = 0;
+	for (unsigned int i = 0; i < content.size(); ++i) {
+		if (GetPivot(i) != 0) {
+			++rank;
+		}
+	}
+	return rank;
 }
 
 
@@ -219,21 +270,3 @@ bool Matrix::IsRegular()
 	return true;
 }
 
-
-
-static int gcd(int a, int b)
-{
-	int r;
-	while (b != 0)
-	{
-		r = a % b;
-		a = b;
-		b = r;
-	}
-	return a;
-}
-
-static int lcm(int a, int b)
-{
-	return a*b / gcd(a, b);
-}

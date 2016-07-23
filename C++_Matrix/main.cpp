@@ -1,64 +1,54 @@
 #include "matrix.h"
 #include <iostream>
 
+#define TEST_NUM 25
+
 using std::cin; using std::cout; using std::endl;
-
-Matrix Rc;
-
-void Input();
 
 int main()
 {
-
-	cout << "Welcome to Use EasyMatLab" << endl;
-	cout << ">>>";
-
-	
-	char cmd;
-	int row1, row2, c;
-	while (cin >> cmd) {
-		if (cmd == 'i') {
-			Input();
-		}
-		else if (cmd = 'r') {
-			Rc.RowReduce();
-			Rc.ShowMatrix();
-		}
-		cout << ">>>";
-	}
-}
-
-
-void Input() {
+	Matrix Rc;
 	int temp;
 	int column, count = 1;
-	std::cout << "Input>";
-	char  cmd;
-
-	while (std::cin >> cmd) {
-		if (cmd == 'a') {
-			while (std::cin >> temp) {
-				Rc.GetOne(temp);
-			}
-			cout << "Success to add data" << endl;
+	std::cout << "please input the column of the matrix:";
+	std::cin >> column;
+	for (int i = 0; i < TEST_NUM; ++i) 
+	{
+		std::cin >> temp;
+		Rc.GetOne(temp);
+		if (count != column) {
+			++count;
 		}
-		if (cmd == 'f') {
+		else
+		{
 			Rc.ReFlash();
-			cout << "Buf is clean now" << endl;
-		}
-		else {
-			cout << cmd << "is not define" << endl;
+			count = 1;
 		}
 	}
 
 	if (Rc.IsRegular())
 	{
-		cout << "There is the Matrix that you input:" << endl;
 		Rc.ShowMatrix();
 	}
 	else
 	{
-		std::cout << "Input is not a matrix" << std::endl;
+		std::cout << "input is not a matrix" << std::endl;
+	}
+	
+	int cmd;
+	int row1, row2, c;
+	while (std::cin >> cmd)
+	{
+
+		if (cmd == 1) {
+			Rc.RowReduce();
+		}
+		else if (cmd == 2) {
+			Fraction Fc;
+			Fc = Rc.det();
+			Fc.ShowFraction();
+		}
 		Rc.ShowMatrix();
 	}
+
 }
