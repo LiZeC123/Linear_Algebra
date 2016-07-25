@@ -67,6 +67,13 @@ Fraction Matrix::det()
 	return Fraction(det,expend);
 }
 
+Matrix & Matrix::Clear()
+{
+	content.clear();
+	return *this;
+	// TODO: 在此处插入 return 语句
+}
+
 Matrix & Matrix::RowEx(int row1, int row2)
 {
 	auto &r1 = content[row1];
@@ -78,11 +85,12 @@ Matrix & Matrix::RowEx(int row1, int row2)
 
 Matrix & Matrix::RowExC(int C, int row)
 {
-	auto &r = content[row];
-	for (auto & i : r) {
-		i = C * i;
+	if (C != 0) {
+		auto &r = content[row];
+		for (auto & i : r) {
+			i = C * i;
+		}
 	}
-
 	return *this;
 }
 
@@ -168,6 +176,8 @@ int Matrix::_RowReduce_Tri(bool IsDeterminant)
 		//判断pivot是否需要交换行位置
 		int ReturnRow = CheckPivot(i);
 		if (ReturnRow > 0) {
+			//交换行列式位置，结果变号
+			expand = -expand;
 			RowEx(i, ReturnRow);
 		}
 		else if (ReturnRow == 0) {
