@@ -10,6 +10,13 @@
 
 class Matrix
 {
+	friend Matrix operator+(Matrix & lmx, Matrix & rmx);
+	friend Matrix operator-(Matrix & lmx, Matrix & rmx);
+	friend Matrix operator*(int C, Matrix & rmx);
+	friend Matrix operator*(Matrix & lmx, Matrix & rmx);
+
+
+
 public:
 	//construcor
 	Matrix() = default;
@@ -31,7 +38,14 @@ public:
 	Matrix & RowReduce();	
 	//计算对应行列式的值
 	Fraction det();
-	
+
+	//清空矩阵的内容
+	Matrix & Clear();
+
+
+
+
+
 private:
 	std::vector<int> buf;
 	std::vector<std::vector<int> > content;
@@ -67,6 +81,10 @@ private:
 	//返回阶梯型矩阵的秩
 	int _Rank();
 
+	//返回矩阵中的一列
+	std::vector<int> GetCol(int col);
+
 };
+
 
 #endif

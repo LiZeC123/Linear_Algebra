@@ -6,29 +6,41 @@
 #include <map>
 #include <set>
 
+
+#include <conio.h>
+#define MAX_PSW_SIZE 20
+
 using std::string; using std::istringstream;
 using std::vector;
 using std::map; using std::set;
-using std::cin; using std::cout; using std::endl;
+using std::cin; using std::cout; using std::endl; using std::cerr;
 
-using  Arg = vector<string>;
+using  Arg = std::vector<std::string>;
 
-void Input(Matrix & Mc);
+string Welcome();
+std::istream & Append(std::istream & in, Arg args);
+std::istream &_Append(std::istream & in, Matrix & Mc);
+void PrintPrompt();
 void NewMatrix(Arg args);
 void IOclean();
-void ChangeMatrix(Arg args);
+void ls(Arg args);
+void Reduce(Arg args);
+void Det(Arg args);
+void Clear(Arg args);
+string UserName = "~";
+string ComputerName = "TK-S300";
 
-
-string GlobalObjectName = "~";
-vector<Matrix> UseValueSpace;
-map<string, int> UseNameSpace;
-set<string> KeyWord = { "cd","ls","reduce","det" ,"Matrix" ,"input"};
+vector<Matrix> UserValueSpace;
+map<string, int> UserNameSpace;
+set<string> KeyWord = {"ls","reduce","det" ,"Matrix" ,"append","cls","reset" };
 
 
 int main()
 {
+	UserName = Welcome();
+	PrintPrompt();
+
 	string cmdline;
-	cout << GlobalObjectName << ">";
 	while (std::getline(cin, cmdline)) {
 		istringstream cmdin(cmdline);
 		string cmd;
@@ -38,7 +50,7 @@ int main()
 				cout << "无效的关键字" << endl;
 			}
 			else {
-				cout << GlobalObjectName << ">";
+				PrintPrompt();
 				continue;
 			}
 		}
@@ -51,33 +63,75 @@ int main()
 			if (cmd == "Matrix") {
 				NewMatrix(args);
 			}
-			else if (cmd == "input") {		
-				Input(UseValueSpace[UseNameSpace[GlobalObjectName]]);
+			else if (cmd == "append") {
+				Append(cin, args);
 			}
 			else if (cmd == "ls") {
-				UseValueSpace[UseNameSpace[GlobalObjectName]].ShowMatrix();
-			}
-			else if (cmd == "cd") {
-				ChangeMatrix(args);
+				ls(args);
 			}
 			else if (cmd == "reduce") {
-				UseValueSpace[UseNameSpace[GlobalObjectName]].RowReduce();
+				Reduce(args);
 			}
 			else if (cmd == "det") {
-				UseValueSpace[UseNameSpace[GlobalObjectName]].det().ShowFraction();
+				Det(args);
+			}
+			else if (cmd == "cls") {
+				Clear(args);
 			}
 		}
 		IOclean();
-		cout << GlobalObjectName << ">";
+		PrintPrompt();
 	}
 }
 
-
-void Input(Matrix & Mc)
+string Welcome()
 {
-	cout << "现在输入你的矩阵，输入EOF结束:" << endl;
+	string id;
+	char cpassword[MAX_PSW_SIZE];
+
+	cout << "LAR Super Compile System 1.0.01" << endl;
+	cout << "Username：";
+	std::getline(std::cin, id);
+	cout << "Password：";
+	char ch;
+	int i = 0;
+	while ((ch = _getch()) != '\r')
+	{
+		if (ch != 8)//不是回撤就录入
+		{
+			cpassword[i] = ch;
+			++i;
+		}
+		else
+		{
+			--i;
+		}
+	}
+	cpassword[i] = '\0';
+	cout << std::endl;
+	string password = cpassword;
+	return id;
+}
+
+std::istream & Append(std::istream & in, Arg args)
+{
+	for (const auto & name : args) {
+		if (UserNameSpace.find(name) == UserNameSpace.end()) {
+			cerr << name << "不存在或无法访问" << endl;
+		}
+		else {
+			_Append(in, UserValueSpace[UserNameSpace[name]]);
+		}
+	}
+	return in;
+}
+
+
+std::istream & _Append(std::istream & in ,Matrix & Mc)
+{
+	cout << "现在输入或者追加你的矩阵，输入EOF结束:" << endl;
 	string s;
-	while (std::getline(cin, s)) {
+	while (std::getline(in, s)) {
 		istringstream sin(s);
 		int temp;
 		while (sin >> temp) {
@@ -87,24 +141,35 @@ void Input(Matrix & Mc)
 	}
 	if (!Mc.IsRegular()) {
 		cout << "你的输入不是一个规则的矩阵" << endl;
+
 	}
+
+	if (!in) {
+		in.clear();
+	}
+
 	Mc.ShowMatrix();
+
+	return in;
+}
+
+void PrintPrompt()
+{
+	cout << UserName << "@" << ComputerName << "~:";
 }
 
 void NewMatrix(Arg args)
 {
-	if (args.size() != 1) {
-		cout << "参数数量不匹配" << endl;
-		return;
+	for (auto & i : args) {
+		if (KeyWord.find(i) != KeyWord.end()) {
+			cerr << i << "是关键字，不能作为标识符" << endl;
+			return;
+		}
 	}
-	else if (KeyWord.find(args[0]) != KeyWord.end()) {
-		cout << "名称不能是关键字" << endl;
-	}
-	else {
+	for(auto &i : args){
 		Matrix NewM;
-		UseValueSpace.push_back(NewM);
-		UseNameSpace[args[0]] = UseValueSpace.size() - 1;
-		GlobalObjectName = args[0];
+		UserValueSpace.push_back(NewM);
+		UserNameSpace[i] = UserValueSpace.size() - 1;
 	}
 }
 
@@ -115,22 +180,54 @@ void IOclean()
 	}
 }
 
-void ChangeMatrix(Arg args)
+void ls(Arg args)
 {
-	if (args.size() != 1) {
-		cout << "参数数量不匹配" << endl;
-		return;
+	for (const auto & name : args) {
+		if (UserNameSpace.find(name) == UserNameSpace.end()) {
+			cerr << name << "不存在或无法访问" << endl;
+		}
+		else {
+			UserValueSpace[UserNameSpace[name]].ShowMatrix();
+			cout << endl;
+		}
 	}
-
-	if (UseNameSpace.find(args[0]) == UseNameSpace.end()) {
-		cout << "指定对象不存在" << endl;
-		return;
-	}
-
-	GlobalObjectName = args[0];
-
-
-
-
-		
 }
+
+void Reduce(Arg args)
+{
+	for (const auto & name : args) {
+		if (UserValueSpace[UserNameSpace[name]].IsEmpty()) {
+			cerr << name << "为空，对该矩阵的化简已停止" << endl;
+		}
+		else {
+			UserValueSpace[UserNameSpace[name]].RowReduce();
+		}
+	}
+}
+
+void Det(Arg args)
+{
+	for (const auto & name : args) {
+		if (UserValueSpace[UserNameSpace[name]].IsEmpty()) {
+			cerr << name << "为空，对该行列式的计算已停止" << endl;
+		}
+		else {
+			UserValueSpace[UserNameSpace[name]].det().ShowFraction();
+		}
+	}
+}
+
+void Clear(Arg args)
+{
+	for (const auto & name : args) {
+		if (UserNameSpace.find(name) == UserNameSpace.end()) {
+			cerr << name << "不存在或无法访问" << endl;
+		}
+		else {
+			UserValueSpace[UserNameSpace[name]].Clear();
+		}
+	}
+}
+
+
+

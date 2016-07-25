@@ -1,4 +1,5 @@
 #include "matrix.h"
+#include "operator.h"
 
 Matrix & Matrix::GetOne(int one)
 {
@@ -254,6 +255,21 @@ int Matrix::_Rank()
 	return rank;
 }
 
+std::vector<int> Matrix::GetCol(int col)
+{
+	std::vector<int> ret;
+	for (unsigned int i = 0; i < content.size(); ++i) {
+		for (unsigned int j = 0; j < content[0].size(); ++j) {
+			if (j == col) {
+				ret.push_back(content[i][j]);
+			}
+		}
+	}
+
+	return ret;
+
+}
+
 
 bool Matrix::IsRegular()
 {	
@@ -280,3 +296,50 @@ bool Matrix::IsRegular()
 	return true;
 }
 
+Matrix operator+(Matrix & lmx, Matrix & rmx)
+{
+	Matrix mx;
+	if (lmx.content.size() == rmx.content.size() &&
+		lmx.content[0].size() == lmx.content[0].size())
+	{
+		for (unsigned int i = 0; i < lmx.content.size(); ++i) {
+			for (unsigned int j = 0; j < lmx.content[0].size(); ++j) {
+				mx.GetOne(lmx.content[i][j] + rmx.content[i][j]);
+			}
+			mx.ReFlash();
+		}
+	}
+	return mx;
+	//以后改为抛出异常
+}
+
+Matrix operator*(int C, Matrix & rmx)
+{	
+	Matrix mx;
+	for (auto &r : rmx.content) {
+		for (auto &i : r) {
+			mx.GetOne(C*i);
+		}
+		mx.ReFlash();
+	}
+
+	return mx;
+}
+
+Matrix operator-(Matrix & lmx, Matrix & rmx)
+{
+	return lmx + (-1 * rmx);
+}
+
+
+Matrix operator*(Matrix & lmx, Matrix & rmx)
+{
+	Matrix mx;
+	for (unsigned int i = 0; i < lmx.content.size(); ++i) {
+		for (unsigned int j = 0; j < rmx.content[0].size(); ++j) {
+			mx.GetOne(dot(lmx.content[i], rmx.GetCol(j)));
+		}
+		mx.ReFlash();
+	}
+	return mx;
+}
