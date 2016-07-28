@@ -1,5 +1,5 @@
-#include "matrix.h"
-#include "operator.h"
+#include "Matrix.h"
+#include "Matrix_Operator.h"
 
 Matrix & Matrix::GetOne(int one)
 {
@@ -38,22 +38,7 @@ bool Matrix::IsBufEmpty()
 Matrix & Matrix::RowReduce()
 {
 	_RowReduce_Tri();
-	
-	//增广矩阵中未知数数量为列数减一
-	const int Xnum = content[0].size() - 1;
-	const int Rnum = _Rank();
-
-	//未知数与秩相等时，才有唯一解，从而进行化简
-	if (Xnum == Rnum) {
-		_RowReduce_Only();
-	}
-	else {
-		//否则只对非0行进行系数的化简
-		for (int i = 0; i < Rnum; ++i) {
-			Reduceone(i);
-		}
-	}
-
+	_RegressReduce();
 	return *this;
 }
 
@@ -68,11 +53,21 @@ Fraction Matrix::det()
 	return Fraction(det,expend);
 }
 
+Matrix & Matrix::Transpose()
+{
+	Matrix temp;
+	for (unsigned int i = 0; i < content[0].size(); ++i) {
+		temp.buf = GetCol(i);
+		temp.ReFlash();
+	}
+	content.swap(temp.content);
+	return *this;
+}
+
 Matrix & Matrix::Clear()
 {
 	content.clear();
 	return *this;
-	// TODO: 在此处插入 return 语句
 }
 
 Matrix & Matrix::RowEx(int row1, int row2)
@@ -119,36 +114,38 @@ Matrix & Matrix::RowExCP(int C1, int row, int C2, int crow)
 int Matrix::GetPivot(int row)
 {
 	auto &r = content[row];
-	for (auto &i : r) {
-		if (i != 0) {
+	for (unsigned int i = 0; i < r.size(); ++i) {
+		if (r[i] != 0) {
 			return i;
 		}
 	}
-	return 0;
+
+	return r.size();
 }
 
-int Matrix::CheckPivot(int row)
+int Matrix::CheckPivot(unsigned int doRow, unsigned int col)
 {
-	const int NotFound = 0;
+	const int NotFound = content.size();
 	const int IsGood = -1;
+	unsigned int i = doRow;
 
-	if (content[row][row] == 0) {
-		for (int i = row + 1; i < content.size(); ++i) {
-			if (content[i][row] != 0) {
-				return i;
+	//大于矩阵返回，直接返回
+	if (col >= content.size() || i >= content[0].size()) {
+		return IsGood;
+	}
+	
+	if (content[i][col] == 0) {
+		for ( ; i < content.size(); ++i) {
+			if (content[i][col] != 0) {
+				break;
 			}
 		}
-		return NotFound;	
+		return i;
 	}
 	else {
-		return IsGood;		
+		return IsGood;
 	}
-}
 
-int Matrix::Getb(int row)
-{
-	int col = content[0].size();
-	return content[row][col];
 }
 
 void Matrix::Reduceone(int row)
@@ -169,35 +166,44 @@ void Matrix::Reduceone(int row)
 
 int Matrix::_RowReduce_Tri(bool IsDeterminant)
 {
+	const unsigned int Rnum = content.size();
+	const unsigned int Cnum = content[0].size();
+
 	int expand = 1;
-	const int Rnum = content.size();
-	//必须两个同时满足，才能保证数组不越界
-	for (int i = 0; i < Rnum; ++i) {
+	unsigned int eli_col = 0;
 
+	//遍历每一行，同时控制消去列的位置
+	for (unsigned int i = 0; i < Rnum && eli_col < Cnum; ++i,++eli_col) {
+		
 		//判断pivot是否需要交换行位置
-		int ReturnRow = CheckPivot(i);
-		if (ReturnRow > 0) {
-			//交换行列式位置，结果变号
-			expand = -expand;
-			RowEx(i, ReturnRow);
+		int ReturnRow = CheckPivot(i, eli_col);
+		while (ReturnRow > 0)
+		{
+			if (ReturnRow < Rnum) {
+				//交换行列式位置，结果变号
+				expand = -expand;
+				RowEx(i, ReturnRow);
+			}
+			else if (ReturnRow == Rnum) {
+				//全部为零，直接开始判断下列的情况
+				++eli_col;
+			}
+			ReturnRow = CheckPivot(i, eli_col);
 		}
-		else if (ReturnRow == 0) {
-			//全为0直接下一轮
-			continue;
-		}
+	
+		//遍历第i行下剩余的行
+		for (int j = i + 1; j < Rnum && eli_col < Cnum; ++j) {
+			
+			
+			int pi = content[i][eli_col];
+			int pj = content[j][eli_col];
 
-		//否则按照正常路径
-		for (int j = i + 1; j < Rnum; ++j) {
-			//遍历第i列对应的数据
-			int pi = GetPivot(i);
-			int pj = content[j][i];
-
-			//判断消去行是否为0，是则直接下一轮
+			//判断消去行是否为0，是则跳过，开始消去下一行
 			if (pj == 0) {
 				continue;
 			}
 
-			//计算达到最小公倍数的因子，
+			//消去该行前计算达到最小公倍数的因子
 			int ps = lcm(pi, pj);
 			pi = ps / pi;
 			pj = ps / pj;
@@ -210,7 +216,7 @@ int Matrix::_RowReduce_Tri(bool IsDeterminant)
 			expand *= pj;
 
 			//调试代码，注意移除
-			//std::cout << std::endl;
+			//std::cerr << std::endl;
 			//ShowMatrix();
 		}
 	}
@@ -223,16 +229,24 @@ int Matrix::_RowReduce_Tri(bool IsDeterminant)
 	}
 }
 
-void Matrix::_RowReduce_Only()
+void Matrix::_RegressReduce()
 {
 	const int Rnum = _Rank();
+	unsigned int elicol = content[0].size() - 1;
 
 	//反向迭代，边界条件有变化
 	for (int i = Rnum - 1; i >= 0; --i) {
 		Reduceone(i);
 		for (int j = i - 1; j >= 0; --j) {
-			int pi = GetPivot(i);
-			int pj = content[j][i];
+			unsigned int eli_col = GetPivot(i);
+			//已经计算过rank，所以不会越界
+			int pi = content[i][eli_col];
+			int pj = content[j][eli_col];
+
+			//判断消去行是否为0，是则直接下一轮
+			if (pj == 0) {
+				continue;
+			}
 
 			int ps = lcm(pi, pj);
 			pi = ps / pi;
@@ -247,8 +261,9 @@ void Matrix::_RowReduce_Only()
 int Matrix::_Rank()
 {
 	int rank = 0;
-	for (unsigned int i = 0; i < content.size(); ++i) {
-		if (GetPivot(i) != 0) {
+	//先判断是否越界，才能判断这一行的值
+	for (unsigned int i = 0;i < content.size() && GetPivot(i) != content[0].size(); ++i) {
+		if (content[i][GetPivot(i)] != 0 ) {
 			++rank;
 		}
 	}
@@ -298,19 +313,19 @@ bool Matrix::IsRegular()
 
 Matrix operator+(Matrix & lmx, Matrix & rmx)
 {
-	Matrix mx;
-	if (lmx.content.size() == rmx.content.size() &&
-		lmx.content[0].size() == lmx.content[0].size())
-	{
-		for (unsigned int i = 0; i < lmx.content.size(); ++i) {
-			for (unsigned int j = 0; j < lmx.content[0].size(); ++j) {
-				mx.GetOne(lmx.content[i][j] + rmx.content[i][j]);
-			}
-			mx.ReFlash();
-		}
+	if (!(lmx.content.size() == rmx.content.size() &&
+		lmx.content[0].size() == lmx.content[0].size())) {
+		throw matrix_mismatch("矩阵不同型");
 	}
+
+	Matrix mx;
+	for (unsigned int i = 0; i < lmx.content.size(); ++i) {
+		for (unsigned int j = 0; j < lmx.content[0].size(); ++j) {
+			mx.GetOne(lmx.content[i][j] + rmx.content[i][j]);
+		}
+		mx.ReFlash();
+	}	
 	return mx;
-	//以后改为抛出异常
 }
 
 Matrix operator*(int C, Matrix & rmx)
@@ -334,6 +349,10 @@ Matrix operator-(Matrix & lmx, Matrix & rmx)
 
 Matrix operator*(Matrix & lmx, Matrix & rmx)
 {
+	if (lmx.content[0].size() != rmx.content.size()) {
+		throw matrix_mismatch("矩阵形式不匹配");
+	}
+
 	Matrix mx;
 	for (unsigned int i = 0; i < lmx.content.size(); ++i) {
 		for (unsigned int j = 0; j < rmx.content[0].size(); ++j) {
